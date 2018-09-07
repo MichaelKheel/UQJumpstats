@@ -96,8 +96,8 @@ Jumping statistics plugin for Goldsrc Engine (Counter-Strike 1.6) originally dev
 ### Connecting to mysql
 For security reasons, the connection to the database is made directly inside the file. uq_jumpstats_sql.inc
 ```C#
-	new kz_uq_host [] = "";
-	new kz_uq_user [] = "";
-	new kz_uq_pass [] = "";
-	new kz_uq_db [] = "";
+new kz_uq_host [] = "";
+new kz_uq_user [] = "";
+new kz_uq_pass [] = "";
+new kz_uq_db [] = "";
 ```
