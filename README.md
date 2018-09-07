@@ -1,6 +1,7 @@
 # Unique Jumpstats plugin
 
 Jumping statistics plugin for Goldsrc Engine (Counter-Strike 1.6) originally developed by Borjomi, but heavily modified by me.
+Initial version of the file **2.39**
 
 ### Supported Build
 * ReHLDS 3.4.0.X
