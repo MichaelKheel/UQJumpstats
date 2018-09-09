@@ -469,7 +469,7 @@ public plugin_precache()
 	precache_sound( "misc/dominatingkz.wav" );
 	
 	precache_model( "models/hairt.mdl" );
-	heystats = precache_model( "sprites/uq_jumpstats.spr" );
+	heystats = precache_model( "sprites/zbeam6.spr" );
 }
 
 bool:valid_id(id)
