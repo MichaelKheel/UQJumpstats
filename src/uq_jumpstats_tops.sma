@@ -165,7 +165,7 @@ public QueryHandle_LoadTops(iFailState, Handle:hQuery, szError[], iErrnum, cData
 	new t_pspeed[NSHOW+1],pid[NSHOW+1], distance[NSHOW+1], maxspeed[NSHOW+1], prestrafe[NSHOW+1], strafes[NSHOW+1], sync[NSHOW+1], ddbh[NSHOW+1],wpn[NSHOW+1][15], jumpoff[NSHOW+1], block[NSHOW+1];
 	new tmp_type;
 	
-	for(new i=0;i<26;i++)
+	for(new i = 0; i < 24 ;i++)
 	{
 		if(equali(cData,Cosy_TypeList[i]))
 		{

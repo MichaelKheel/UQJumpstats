@@ -179,28 +179,22 @@ stock Float:GetFailedDistance(Float:ExDist, bool:ducking, Float:gravity, Float:j
 	
 	return distance;
 }
+
 stock weapon_rank(maxspeed)
 {
 	new rank;
 	
 	switch(maxspeed)
 	{
-		case 210:
-			rank = 0;
-		case 220:
-			rank = 1;
-		case 221:
-			rank = 2;
-		case 230:
-			rank = 3;
-		case 235:
-			rank = 4;
-		case 240:
-			rank = 5;
-		case 245:
-			rank = 6;
-		case 260:
-			rank = 7;
+		case 0: rank = -1;
+		case 210: rank = 1;
+		case 220: rank = 2;
+		case 221: rank = 3;
+		case 230: rank = 4;
+		case 235: rank = 5;
+		case 240: rank = 6;
+		case 245: rank = 7;
+		case 250: rank = 0;
 	}
 	
 	return rank;
@@ -212,26 +206,19 @@ stock weapon_maxspeed(rank)
 	
 	switch(rank)
 	{
-		case 0:
-			maxspeed = 210;
-		case 1:
-			maxspeed = 220;
-		case 2:
-			maxspeed = 221;
-		case 3:
-			maxspeed = 230;
-		case 4:
-			maxspeed = 235;
-		case 5:
-			maxspeed = 240;
-		case 6:
-			maxspeed = 245;
-		case 7:
-			maxspeed = 260;
+		case 0: maxspeed = 250;
+		case 1:	maxspeed = 210;
+		case 2:	maxspeed = 220;
+		case 3:	maxspeed = 221;
+		case 4:	maxspeed = 230;
+		case 5:	maxspeed = 235;
+		case 6:	maxspeed = 240;
+		case 7:	maxspeed = 245;
 	}
 	
 	return maxspeed;
 }
+
 stock Float:LandingCalculate(id,Float:landing_orig[3], Float:jumpoff_origin[3])
 {
 	new Float:tmplandorg[3],Float:tmplandorigin[3]; 
