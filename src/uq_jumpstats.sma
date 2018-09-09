@@ -5,7 +5,6 @@
 #include <engine>
 #include <cstrike>
 #include <hamsandwich>
-#include <uq_jumpstats_const.inc>
 #include <uq_jumpstats_stocks.inc>
 #include <celltrie>
 

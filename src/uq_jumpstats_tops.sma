@@ -15,7 +15,6 @@ v1.08 = Все лишние вырезано, все, что возможно, �
 #include <amxmisc>
 #include <celltrie>
 #include <sqlx>
-#include <uq_jumpstats_const.inc>
 
 #pragma semicolon 1
 
