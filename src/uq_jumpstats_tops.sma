@@ -15,7 +15,6 @@ v1.08 = Все лишние вырезано, все, что возможно, �
 #include <amxmisc>
 #include <celltrie>
 #include <sqlx>
-#include <kz>
 #include <uq_jumpstats_const.inc>
 
 #pragma semicolon 1
@@ -24,10 +23,41 @@ v1.08 = Все лишние вырезано, все, что возможно, �
 #define VERSION "1.08"
 #define AUTHOR "MichaelKheel"
 
+#define NTOP 20 //Num of places in dat tops
+#define NSHOW 9 //Num of places to show in top
+
 new sz_Menu_Weapon[33], bool:sz_Menu_Block[33];
 new Trie:JumpData,Trie:JumpData_Block;
 new Handle:DB_TUPLE1,Handle:SqlConnection1,g_error[512];
 new bool:loading_tops[33];
+new sv_airaccelerate;
+
+new Cosy_TypeList[24][] = {
+	"lj",
+	"cj",
+	"dcj",
+	"mcj",
+	"bj",
+	"sbj",
+	"wj",
+	"bhopinduck",
+	"ladder",
+	"ldbhop",
+	"realldbhop",
+	"scj",
+	"dscj",
+	"mscj",
+	"dropcj",
+	"dropdcj",
+	"dropmcj",
+	"dropbj",
+	"dropscj",
+	"dropdscj",
+	"dropmscj",
+	"upbj",
+	"upsbj",
+	"upbhopinduck"
+};
 
 public plugin_init()
 {
@@ -35,6 +65,8 @@ public plugin_init()
 
 	register_menucmd(register_menuid("StatsTopMenu1"), 1023, "TopMenu1");
 	register_clcmd( "say /ljtop",	"LjTopMenu" );
+
+	sv_airaccelerate = get_cvar_pointer("sv_airaccelerate");
 }
 
 public plugin_cfg()
@@ -153,7 +185,7 @@ public QueryHandle_LoadTops(iFailState, Handle:hQuery, szError[], iErrnum, cData
 	new t_pspeed[NSHOW+1],pid[NSHOW+1], distance[NSHOW+1], maxspeed[NSHOW+1], prestrafe[NSHOW+1], strafes[NSHOW+1], sync[NSHOW+1], ddbh[NSHOW+1],wpn[NSHOW+1][15], jumpoff[NSHOW+1], block[NSHOW+1];
 	new tmp_type;
 	
-	for(new i=0;i<NWPNTECHNUM;i++)
+	for(new i=0;i<26;i++)
 	{
 		if(equali(cData,Cosy_TypeList[i]))
 		{
@@ -608,7 +640,7 @@ public show_tops_block_weapon_tmp(id,type[],type_num,wpn_rank)
 	new tmp_oldtype[33];
 	new Trie:JS_old, block_for_old;
 	
-	for( i = INFO_ZERO; i < NSHOW; i++ )
+	for( i = 0; i < NSHOW; i++ )
 	{
 		format(tmp_oldtype, 32, "block_%s_%d_%d", type,i,weapon_maxspeed(wpn_rank));
 			
@@ -629,7 +661,7 @@ public show_tops_block_weapon_tmp(id,type[],type_num,wpn_rank)
 	len += format(buffer[len], 2367-len, "<tr  align=center bgcolor=#52697B><th width=5%%> # <th width=34%% align=left> Name <th width=20%%> Block <th  width=20%%> Distance <th  width=30%%> Jumpoff <th  width=30%%> Weapon");
 	
 	new oldjj,jj;
-	for( i = INFO_ZERO,jj=1; i < NSHOW; i++ )
+	for( i = 0,jj=1; i < NSHOW; i++ )
 	{	
 		new Trie:JS;
 		new tmp_names[33],tmp_weap_names[33],distance,Float:jumpoff,block;
@@ -699,7 +731,7 @@ public tmp_show_tops_weapon(id,type[],type_num,wpn_rank)
 	len = format(buffer[len], 2367-len,"<STYLE>body{background:#232323;color:#cfcbc2;font-family:sans-serif}table{width:100%%;line-height:160%%;font-size:12px}.q{border:1px solid #4a4945}.b{background:#2a2a2a}</STYLE><table cellpadding=2 cellspacing=0 border=0>");
 	len += format(buffer[len], 2367-len, "<tr  align=center bgcolor=#52697B><th width=5%%> # <th width=34%% align=left> Name <th width=10%%> Distance <th  width=10%%> MaxSpeed <th  width=11%%> PreStrafe <th  width=9%%> Strafes <th  width=6%%> Sync <th  width=6%%> Weapon");
 		
-	for( i = INFO_ZERO; i < (NSHOW); i++ )
+	for( i = 0; i < (NSHOW); i++ )
 	{		
 		new Trie:JS;
 		new tmp_names[33],tmp_weap_names[33],distance,maxspeed,prestrafe,strafes,sync;

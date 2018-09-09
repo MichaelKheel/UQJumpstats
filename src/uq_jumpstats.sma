@@ -5,7 +5,6 @@
 #include <engine>
 #include <cstrike>
 #include <hamsandwich>
-#include <kz>
 #include <uq_jumpstats_const.inc>
 #include <uq_jumpstats_stocks.inc>
 #include <celltrie>
@@ -18,7 +17,13 @@
 #pragma tabsize 0
 
 new g_ClFilterStuffCmd[33];
+#define prefix "[CC]"
 #define min_pre "60"
+#define FPS_TASK_ID 927560
+#define GRAVITY	800.0
+#define NSTRAFES 14 //How many Strafes to show
+#define SQLCVARSNUM 4 //Num of cvars to goes in sql DB
+#define NTECHNUM 26 //Num of techniques
 ////////////////////////////////////Some shit varibeles////////////////////////////////////
 new angles_arry[33],Float:old_angles[33][3],lost_frame_count[33][NSTRAFES],line_lost[33][NSTRAFES][160],FullJumpFrames[33],heystats,max_players,bool:duckbhop_bug_pre[33],bool:dropupcj[33],Float:first_duck_z[33],Float:checkladdertime[33],bool:ladderbug[33],bool:login[33];
 new uq_istrafe,kz_uq_istrafe,bug_check[33],bool:bug_true[33],bool:find_ladder[33],bool:Checkframes[33],type_button_what[33][100];
@@ -99,8 +104,67 @@ new prest_r,prest_g,prest_b,Float:prest_x,Float:prest_y,h_prest,h_stats,h_duck,h
 new uq_noslow,uq_fps,stats_r,stats_b,stats_g,f_stats_r,f_stats_b,f_stats_g;
 new uq_bug,kz_uq_bug,kz_uq_script_detection,uq_script_detection;
 new logs_path[128];
+new sv_airaccelerate, sv_gravity;
 
 new Trie:JumpPlayers;
+
+enum JumpType
+{
+	Type_LongJump = 0,
+	Type_HighJump = 1,
+	Type_CountJump = 2,
+	Type_BhopLongJump = 3,
+	Type_Slide = 4, //worked only on 2 maps
+	Type_StandupBhopLongJump = 5,
+	Type_WeirdLongJump = 6,
+	Type_Drop_BhopLongJump = 7,
+	Type_Nothing = 8, //??
+	Type_Double_CountJump = 9,
+	Type_Multi_CountJump = 11,
+	Type_DuckBhop = 12,
+	Type_ladder = 13,
+	Type_None = 14,
+	Type_ladderBhop =15,
+	Type_Nothing2 = 16, //??
+	Type_Real_ladder_Bhop = 17,
+	Type_Drop_CountJump = 18, 
+	Type_StandUp_CountJump = 19,
+	Type_Multi_Bhop = 20,
+	Type_Up_Bhop = 21,
+	Type_Up_Stand_Bhop = 22,
+	Type_Up_Bhop_In_Duck = 23,
+	Type_Bhop_In_Duck = 24,
+	Type_Null = 25
+};
+
+new Type_List[NTECHNUM][] = { 		//For Top_
+	"lj",			//0
+	"scj",			//1
+	"cj",			//2
+	"wj",			//3
+	"bj",			//4
+	"sbj",			//5
+	"ladder",		//6
+	"ldbhop",		//7
+	"dropcj",		//8
+	"dropbj",		//9
+	"dcj",			//10
+	"dscj",			//11
+	"dropscj",		//12
+	"dropdscj",		//13
+	"duckbhop",		//14
+	"bhopinduck",		//15
+	"realldbhop",		//16
+	"upbj",			//17
+	"upsbj",		//18
+	"upbhopinduck",		//19
+	"dropdcj",		//20
+	"mcj",			//21
+	"mscj",			//22
+	"dropmscj",		//23
+	"multibhop",		//24
+	"dropmcj"		//25
+};
 
 new const KZ_CVARSDIR[] = "config.cfg";
 
@@ -292,19 +356,6 @@ public plugin_init()
 	formatex(logs_path, 127, "%s\uq_jumpstats.txt", logs);
 }
 
-public plugin_natives()
-{
-	register_native("kz_get_configsdir", "native_kz_get_configsdir", 1);
-}
-
-public native_kz_get_configsdir(name[], len)
-{
-	param_convert(1);
-	new lalin[64];
-	get_localinfo("amxx_configsdir", lalin,63);
-	return formatex(name, len, "%s/%s", lalin, KZ_DIR);
-}
-
 public plugin_cfg()
 {
 	new cvarfiles[100], uqpath[64];
@@ -472,7 +523,7 @@ public Log_script(f_frames,cheated_frames,id,Float:log_dist,Float:log_max,Float:
 	write_file(logs_path, main_text, -1);
 	
 	new strf[40];
-	for(new ll=INFO_ONE; (ll <= log_str) && (ll < NSTRAFES);ll++)
+	for(new ll=1; (ll <= log_str) && (ll < NSTRAFES);ll++)
 	{
 		strtok(t_str,strf,40,t_str,40*NSTRAFES,'^n');
 		replace(strf,40,"^n","");
@@ -1354,14 +1405,14 @@ public fwdPreThink( id )
 				speedshowing[id]=speed;
 				
 				new is_spec_user[33];
-				for( new i = INFO_ONE; i < max_players; i++ )
+				for( new i = 1; i < max_players; i++ )
 				{
 					is_spec_user[i]=is_user_spectating_player(i, id);
 				}
 				if(strafe_num[id]>NSTRAFES1)
 				{
 					g_reset[id]=true;
-					for( new i = INFO_ONE; i < max_players; i++ )
+					for( new i = 1; i < max_players; i++ )
 					{
 						if( (i == id || is_spec_user[i]))
 						{
@@ -1375,7 +1426,7 @@ public fwdPreThink( id )
 				
 				if((button&IN_RIGHT || button&IN_LEFT) && !(flags&FL_ONGROUND))
 				{
-					for(new i = INFO_ONE; i < max_players; i++ )
+					for(new i = 1; i < max_players; i++ )
 					{
 						if( (i == id || is_spec_user[i]))
 						{
@@ -1531,7 +1582,7 @@ public fwdPreThink( id )
 					else heightland_origin=origin[2];
 					
 					
-					for( new i = INFO_ONE; i < max_players; i++ )
+					for( new i = 1; i < max_players; i++ )
 					{
 						if( (i == id || is_spec_user[i]))
 						{	
@@ -1555,7 +1606,7 @@ public fwdPreThink( id )
 							}
 						}
 					}
-					for( new i = INFO_ONE; i < max_players; i++ )
+					for( new i = 1; i < max_players; i++ )
 					{
 						if( (i == id || is_spec_user[i]))
 						{
@@ -1801,7 +1852,7 @@ public fwdPreThink( id )
 				
 				if(flags&FL_ONGROUND && slidim[id]==true && Pmaxspeed == 250.0)
 				{
-					for( new i = INFO_ONE; i < max_players; i++ )
+					for( new i = 1; i < max_players; i++ )
 					{
 						if( (i == id || is_spec_user[i]) && g_lj_stats[i]==true)
 						{
@@ -1870,7 +1921,7 @@ public fwdPreThink( id )
 				}
 				if((failslide[id]==true) && slidim[id]==true)
 				{
-					for( new i = INFO_ONE; i < max_players; i++ )
+					for( new i = 1; i < max_players; i++ )
 					{
 						if( (i == id || is_spec_user[i]) && g_lj_stats[i]==true)
 						{
@@ -1915,7 +1966,7 @@ public fwdPreThink( id )
 				if( (in_air[id]==true || in_bhop[id] == true) && !(flags&FL_ONGROUND) )
 				{
 					static i;
-					for( i = INFO_ZERO; i < 2; i++ )
+					for( i = 0; i < 2; i++ )
 					{
 						if( (i == 1) 
 						|| (frame_origin[id][i][0] == 0
@@ -1967,7 +2018,7 @@ public fwdPreThink( id )
 						}
 						else jheight[id]=oldjump_height[id];
 						
-						for( new i = INFO_ONE; i < max_players; i++ )
+						for( new i = 1; i < max_players; i++ )
 						{
 							if( (i == id || is_spec_user[i]))
 							{	
@@ -2125,7 +2176,7 @@ public fwdPreThink( id )
 								jumpoff_origin[id][2] = pre_jumpoff_origin[id][2];
 							}
 							
-							for( new i = INFO_ONE; i < max_players; i++ )
+							for( new i = 1; i < max_players; i++ )
 							{
 								if( (i == id || is_spec_user[i]))
 								{	
@@ -2175,7 +2226,7 @@ public fwdPreThink( id )
 						}
 						else if(jump_type[id]==Type_DuckBhop)
 						{
-							for( new i = INFO_ONE; i < max_players; i++ )
+							for( new i = 1; i < max_players; i++ )
 							{
 								if( (i == id || is_spec_user[i]))
 								{	
@@ -2416,7 +2467,7 @@ public fwdPreThink( id )
 					jumpoff_origin[id][2]=ladderxyz[nashladder][2]+35.031250;
 					
 					jumpoff_time[id] = get_gametime( );
-					strafecounter_oldbuttons[id] = INFO_ZERO;
+					strafecounter_oldbuttons[id] = 0;
 					
 					jump_type[id]=Type_ladder;
 					laddertime[id]=get_gametime();
@@ -2440,12 +2491,12 @@ public fwdPreThink( id )
 					ladderjump[id]=false;	
 					TempSpeed[id] = 0.0;
 					static i;
-					for( i = INFO_ZERO; i < NSTRAFES; i++ )
+					for( i = 0; i < NSTRAFES; i++ )
 					{
 						strafe_stat_speed[id][i][0] = 0.0;
 						strafe_stat_speed[id][i][1] = 0.0;
-						strafe_stat_sync[id][i][0] = INFO_ZERO;
-						strafe_stat_sync[id][i][1] = INFO_ZERO;
+						strafe_stat_sync[id][i][0] = 0;
+						strafe_stat_sync[id][i][1] = 0;
 						strafe_stat_time[id][i] = 0.0;
 						strafe_lost_frame[id][i] = 0;
 						
@@ -2458,7 +2509,7 @@ public fwdPreThink( id )
 					turning_right[id] = false;
 					turning_left[id] = false;
 					
-					for( i = INFO_ZERO; i < 2; i++ )
+					for( i = 0; i < 2; i++ )
 					{
 						frame_origin[id][i][0] = 0.0;
 						frame_origin[id][i][1] = 0.0;
@@ -2468,7 +2519,7 @@ public fwdPreThink( id )
 						frame_velocity[id][i][1] = 0.0;
 						frame_velocity[id][i][2] = 0.0;
 					}
-					for( i = INFO_ONE; i < max_players; i++ )
+					for( i = 1; i < max_players; i++ )
 					{
 						if( (i == id || is_spec_user[i]))
 						{
@@ -2610,7 +2661,7 @@ public fwdPreThink( id )
 					else jumpoff_origin[id][2] = origin[2];
 					
 					jumpoff_time[id] = get_gametime( );
-					strafecounter_oldbuttons[id] = INFO_ZERO;
+					strafecounter_oldbuttons[id] = 0;
 			
 					pev(id, pev_velocity, velocity);
 					secorig[id]=origin;
@@ -2639,12 +2690,12 @@ public fwdPreThink( id )
 					TempSpeed[id] = 0.0;
 					
 					static i;
-					for( i = INFO_ZERO; i < NSTRAFES; i++ )
+					for( i = 0; i < NSTRAFES; i++ )
 					{
 						strafe_stat_speed[id][i][0] = 0.0;
 						strafe_stat_speed[id][i][1] = 0.0;
-						strafe_stat_sync[id][i][0] = INFO_ZERO;
-						strafe_stat_sync[id][i][1] = INFO_ZERO;
+						strafe_stat_sync[id][i][0] = 0;
+						strafe_stat_sync[id][i][1] = 0;
 						strafe_stat_time[id][i] = 0.0;
 						strafe_lost_frame[id][i] = 0;
 					}
@@ -2658,7 +2709,7 @@ public fwdPreThink( id )
 					turning_right[id] = false;
 					turning_left[id] = false;
 			
-					for( i = INFO_ZERO; i < 2; i++ )
+					for( i = 0; i < 2; i++ )
 					{
 						frame_origin[id][i][0] = 0.0;
 						frame_origin[id][i][1] = 0.0;
@@ -2669,7 +2720,7 @@ public fwdPreThink( id )
 						frame_velocity[id][i][2] = 0.0;
 					}
 					
-					for( i = INFO_ONE; i < max_players; i++ )
+					for( i = 1; i < max_players; i++ )
 					{
 						if( (i == id || is_spec_user[i]))
 						{
@@ -2798,7 +2849,7 @@ public fwdPreThink( id )
 						pev(id, pev_origin, origin);
 						static bool:ducking;
 						ducking = is_user_ducking( id ); 
-						strafecounter_oldbuttons[id] = INFO_ZERO;
+						strafecounter_oldbuttons[id] = 0;
 					
 						strafe_num[id] = 0;
 						TempSpeed[id] = 0.0;
@@ -2849,16 +2900,16 @@ public fwdPreThink( id )
 						maxspeed[id] = speed;
 						
 						static i;
-						for( i = INFO_ZERO; i < NSTRAFES; i++ )
+						for( i = 0; i < NSTRAFES; i++ )
 						{
 							strafe_stat_speed[id][i][0] = 0.0;
 							strafe_stat_speed[id][i][1] = 0.0;
-							strafe_stat_sync[id][i][0] = INFO_ZERO;
-							strafe_stat_sync[id][i][1] = INFO_ZERO;
+							strafe_stat_sync[id][i][0] = 0;
+							strafe_stat_sync[id][i][1] = 0;
 							strafe_stat_time[id][i] = 0.0;
 							strafe_lost_frame[id][i] = 0;
 						}
-						for( i = INFO_ZERO; i < 2; i++ )
+						for( i = 0; i < 2; i++ )
 						{
 							frame_origin[id][i][0] = 0.0;
 							frame_origin[id][i][1] = 0.0;
@@ -2929,7 +2980,7 @@ public fwdPreThink( id )
 						else jumpoff_origin[id][2] = origin[2];
 						
 						jumpoff_time[id] = get_gametime( );
-						strafecounter_oldbuttons[id] = INFO_ZERO;
+						strafecounter_oldbuttons[id] = 0;
 						
 						pev(id, pev_origin, origin);
 						if(is_user_ducking(id))
@@ -3016,12 +3067,12 @@ public fwdPreThink( id )
 						TempSpeed[id] = 0.0;
 						
 						static i;
-						for( i = INFO_ZERO; i < NSTRAFES; i++ )
+						for( i = 0; i < NSTRAFES; i++ )
 						{
 							strafe_stat_speed[id][i][0] = 0.0;
 							strafe_stat_speed[id][i][1] = 0.0;
-							strafe_stat_sync[id][i][0] = INFO_ZERO;
-							strafe_stat_sync[id][i][1] = INFO_ZERO;
+							strafe_stat_sync[id][i][0] = 0;
+							strafe_stat_sync[id][i][1] = 0;
 							strafe_stat_time[id][i] = 0.0;
 							strafe_lost_frame[id][i] = 0;
 						}
@@ -3035,7 +3086,7 @@ public fwdPreThink( id )
 						turning_right[id] = false;
 						turning_left[id] = false;
 						
-						for( i = INFO_ZERO; i < 2; i++ )
+						for( i = 0; i < 2; i++ )
 						{
 							frame_origin[id][i][0] = 0.0;
 							frame_origin[id][i][1] = 0.0;
@@ -3054,7 +3105,7 @@ public fwdPreThink( id )
 							
 						}
 						
-						for( i = INFO_ONE; i < max_players; i++ )
+						for( i = 1; i < max_players; i++ )
 						{
 							if( (i == id || is_spec_user[i]))
 							{
@@ -3233,7 +3284,7 @@ public fwdPreThink( id )
 					pev(id, pev_origin, origin);
 					static bool:ducking;
 					ducking = is_user_ducking( id );
-					strafecounter_oldbuttons[id] = INFO_ZERO;
+					strafecounter_oldbuttons[id] = 0;
 				
 					strafe_num[id] = 0;
 					TempSpeed[id] = 0.0;
@@ -3257,16 +3308,16 @@ public fwdPreThink( id )
 					maxspeed[id] = speed;
 					
 					static i;
-					for( i = INFO_ZERO; i < NSTRAFES; i++ )
+					for( i = 0; i < NSTRAFES; i++ )
 					{
 						strafe_stat_speed[id][i][0] = 0.0;
 						strafe_stat_speed[id][i][1] = 0.0;
-						strafe_stat_sync[id][i][0] = INFO_ZERO;
-						strafe_stat_sync[id][i][1] = INFO_ZERO;
+						strafe_stat_sync[id][i][0] = 0;
+						strafe_stat_sync[id][i][1] = 0;
 						strafe_stat_time[id][i] = 0.0;
 						strafe_lost_frame[id][i] = 0;
 					}
-					for( i = INFO_ZERO; i < 2; i++ )
+					for( i = 0; i < 2; i++ )
 					{
 						frame_origin[id][i][0] = 0.0;
 						frame_origin[id][i][1] = 0.0;
@@ -3285,7 +3336,7 @@ public fwdPreThink( id )
 					formatex(Jtype1[id],32,"mbj");
 				
 					bhop_num[id]++;
-					for( new i = INFO_ONE; i < max_players; i++ )
+					for( new i = 1; i < max_players; i++ )
 					{
 						if( (i == id || is_spec_user[i]))
 						{	
@@ -3333,7 +3384,7 @@ public fwdPreThink( id )
 						bhopaem[id]=true;
 						
 						static i;
-						for( i = INFO_ONE; i < max_players; i++ )
+						for( i = 1; i < max_players; i++ )
 						{
 							if( (i == id || is_spec_user[i]))
 							{	
@@ -3705,12 +3756,12 @@ public fwdPreThink( id )
 					
 					
 					//streifs stat
-					sync_[id] = INFO_ZERO;
+					sync_[id] = 0;
 					strMess[0] = '^0'; //unnecessary?
 					strMessBuf[0] = '^0'; //unnecessary?
-					strLen = INFO_ZERO;
-					badSyncTemp = INFO_ZERO;
-					goodSyncTemp = INFO_ZERO;
+					strLen = 0;
+					badSyncTemp = 0;
+					goodSyncTemp = 0;
 					new Float:tmpstatspeed[NSTRAFES],Float:tmpstatpoteri[NSTRAFES];
 								
 					Fulltime = last_land_time[id]-jumpoff_time[id];
@@ -3825,7 +3876,7 @@ public fwdPreThink( id )
 					
 					//Sync
 					if( goodSyncTemp > 0 ) sync_[id]= (goodSyncTemp*100/(goodSyncTemp+badSyncTemp));
-					else sync_[id] = INFO_ZERO;
+					else sync_[id] = 0;
 					
 					switch( jump_type[id] )
 					{
@@ -4301,7 +4352,7 @@ public fwdPreThink( id )
 					{
 						strM[0] = '^0'; 
 						strMBuf[0] = '^0'; 
-						strL = INFO_ZERO;
+						strL = 0;
 						for(jj = 2;jj <= ducks[id]; jj++)
 						{
 							strL += format(strM[strL],(40*NSTRAFES)-strL-1, "^t%2d^tduck: (%0.3f)^n", jj-1,statsduckspeed[id][jj]);
@@ -4317,7 +4368,7 @@ public fwdPreThink( id )
 							st2[i]=strafe_stat_sync[id][i][1];
 						}
 						
-						for( new i = INFO_ONE; i < max_players; i++ )
+						for( new i = 1; i < max_players; i++ )
 						{
 							if( (i == id || is_spec_user[i]))
 							{
@@ -4333,7 +4384,7 @@ public fwdPreThink( id )
 							}
 						}
 					}
-					for( new i = INFO_ONE; i < max_players; i++ )
+					for( new i = 1; i < max_players; i++ )
 					{
 						if( (i == id || is_spec_user[i]) && g_lj_stats[i]==true)
 						{	
@@ -4429,7 +4480,7 @@ public fwdPreThink( id )
 					}
 					
 					//console prints
-					for( new i = INFO_ONE; i < max_players; i++ )
+					for( new i = 1; i < max_players; i++ )
 					{
 						if( (i == id || is_spec_user[i]) && g_lj_stats[i]==true)
 						{
@@ -4469,7 +4520,7 @@ public fwdPreThink( id )
 							if(jump_type[id]!=Type_None)
 							{
 								static strMessHalf[40];
-								for(jj=INFO_ONE; (jj <= strafe_num[id]) && (jj < NSTRAFES);jj++)
+								for(jj=1; (jj <= strafe_num[id]) && (jj < NSTRAFES);jj++)
 								{
 										strtok(strMessBuf,strMessHalf,40,strMessBuf,40*NSTRAFES,'^n');
 										replace(strMessHalf,40,"^n","");
@@ -4818,7 +4869,7 @@ public fwdPreThink( id )
 							return FMRES_IGNORED;
 						}
 						
-						for( new i = INFO_ONE; i < max_players; i++ )
+						for( new i = 1; i < max_players; i++ )
 						{
 							if( (i == id || is_spec_user[i]))
 							{
@@ -5219,7 +5270,7 @@ public fwdPreThink( id )
 					}
 					else h_jof=4;
 					
-					for( new i = INFO_ONE; i < max_players; i++ )
+					for( new i = 1; i < max_players; i++ )
 					{
 						if( (i == id || is_spec_user[i]))
 						{	
@@ -5386,7 +5437,7 @@ public fwdPostThink( id )
 				
 				if(strafe_num[id] < NSTRAFES)
 					strafe_stat_time[id][strafe_num[id]] = get_gametime();
-				strafe_num[id] += INFO_ONE;
+				strafe_num[id] += 1;
 				
 				if(strafe_num[id]>0 && strafe_num[id]<100) type_button_what[id][strafe_num[id]]=1;
 			}
@@ -5399,7 +5450,7 @@ public fwdPostThink( id )
 				
 				if(strafe_num[id] < NSTRAFES)
 					strafe_stat_time[id][strafe_num[id]] = get_gametime();
-				strafe_num[id] += INFO_ONE;
+				strafe_num[id] += 1;
 				
 				if(strafe_num[id]>0 && strafe_num[id]<100) type_button_what[id][strafe_num[id]]=1;
 			}
@@ -5412,7 +5463,7 @@ public fwdPostThink( id )
 				
 				if(strafe_num[id] < NSTRAFES)
 					strafe_stat_time[id][strafe_num[id]] = get_gametime();
-				strafe_num[id] += INFO_ONE;
+				strafe_num[id] += 1;
 				
 				if(strafe_num[id]>0 && strafe_num[id]<100) type_button_what[id][strafe_num[id]]=2;
 			}
@@ -5425,7 +5476,7 @@ public fwdPostThink( id )
 		
 				if(strafe_num[id] < NSTRAFES)
 					strafe_stat_time[id][strafe_num[id]] = get_gametime();
-				strafe_num[id] += INFO_ONE;
+				strafe_num[id] += 1;
 				
 				if(strafe_num[id]>0 && strafe_num[id]<100) type_button_what[id][strafe_num[id]]=2;
 			}
@@ -5440,11 +5491,11 @@ public fwdPostThink( id )
 				{
 					if( fSpeed > speed)
 					{
-						strafe_stat_sync[id][strafe_num[id]][0] += INFO_ONE; 
+						strafe_stat_sync[id][strafe_num[id]][0] += 1; 
 					}
 					else
 					{
-						strafe_stat_sync[id][strafe_num[id]][1] += INFO_ONE;
+						strafe_stat_sync[id][strafe_num[id]][1] += 1;
 						if(uq_istrafe)
 							line_lost[id][strafe_num[id]][lost_frame_count[id][strafe_num[id]]]=1;
 					}
@@ -5460,16 +5511,16 @@ public fwdPostThink( id )
 				
 			}
 			else if(uq_istrafe)
-				strafe_lost_frame[id][strafe_num[id]] += INFO_ONE;
+				strafe_lost_frame[id][strafe_num[id]] += 1;
 			
 			if( buttons&IN_MOVERIGHT && (buttons&IN_MOVELEFT || buttons&IN_FORWARD || buttons&IN_BACK) )
-				strafecounter_oldbuttons[id] = INFO_ZERO;
+				strafecounter_oldbuttons[id] = 0;
 			else if( buttons&IN_MOVELEFT && (buttons&IN_FORWARD || buttons&IN_BACK || buttons&IN_MOVERIGHT) )
-				strafecounter_oldbuttons[id] = INFO_ZERO;
+				strafecounter_oldbuttons[id] = 0;
 			else if( buttons&IN_FORWARD && (buttons&IN_BACK || buttons&IN_MOVERIGHT || buttons&IN_MOVELEFT) )
-				strafecounter_oldbuttons[id] = INFO_ZERO;
+				strafecounter_oldbuttons[id] = 0;
 			else if( buttons&IN_BACK && (buttons&IN_MOVERIGHT || buttons&IN_MOVELEFT || buttons&IN_FORWARD) )
-				strafecounter_oldbuttons[id] = INFO_ZERO;
+				strafecounter_oldbuttons[id] = 0;
 			else if( turning_left[id] || turning_right[id] )
 				strafecounter_oldbuttons[id] = buttons;
 		}
