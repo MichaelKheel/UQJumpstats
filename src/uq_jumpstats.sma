@@ -10,7 +10,7 @@
 #include <uq_jumpstats_stocks.inc>
 
 #define PLUGIN "UQJS"
-#define VERSION "1.09"
+#define VERSION "1.10"
 #define AUTHOR "MichaelKheel"
 
 new g_ClFilterStuffCmd[33];

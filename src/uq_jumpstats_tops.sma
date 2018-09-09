@@ -18,7 +18,7 @@ v1.08 = Все лишние вырезано, все, что возможно, �
 #include <uq_jumpstats_stocks.inc>
 
 #define PLUGIN "UQJT"
-#define VERSION "1.09"
+#define VERSION "1.10"
 #define AUTHOR "MichaelKheel"
 
 #define NTOP 20 //Num of places in dat tops
