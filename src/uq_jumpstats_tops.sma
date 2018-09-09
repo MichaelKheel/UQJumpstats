@@ -15,11 +15,10 @@ v1.08 = Все лишние вырезано, все, что возможно, �
 #include <amxmisc>
 #include <celltrie>
 #include <sqlx>
-
-#pragma semicolon 1
+#include <uq_jumpstats_stocks.inc>
 
 #define PLUGIN "UQJT"
-#define VERSION "1.08"
+#define VERSION "1.09"
 #define AUTHOR "MichaelKheel"
 
 #define NTOP 20 //Num of places in dat tops
@@ -27,7 +26,6 @@ v1.08 = Все лишние вырезано, все, что возможно, �
 
 new sz_Menu_Weapon[33], bool:sz_Menu_Block[33];
 new Trie:JumpData,Trie:JumpData_Block;
-new Handle:DB_TUPLE1,Handle:SqlConnection1,g_error[512];
 new bool:loading_tops[33];
 new sv_airaccelerate;
 
@@ -66,30 +64,13 @@ public plugin_init()
 	register_clcmd( "say /ljtop",	"LjTopMenu" );
 
 	sv_airaccelerate = get_cvar_pointer("sv_airaccelerate");
+	set_task(0.3, "stats_sql");
 }
 
 public plugin_cfg()
 {
-	set_task(0.3, "tops_sql");
-
 	JumpData = TrieCreate();
 	JumpData_Block = TrieCreate();
-}
-public tops_sql()
-{
-	DB_TUPLE1 = SQL_MakeStdTuple();
-	
-	new error;
-	SqlConnection1 = SQL_Connect(DB_TUPLE1,error,g_error,511);
-	
-	if(!SqlConnection1) 
-	{
-		server_print("uq_jumpstats: Could not connect to SQL database; Error #%d: %s", error, g_error);
-		log_amx("uq_jumpstats: Could not connect to SQL database; Error #%d: %s", error, g_error);
-		return pause("a");
-	}
-	
-	return PLUGIN_CONTINUE;
 }
 
 public client_connect(id)
@@ -117,7 +98,7 @@ public read_tops(id, type[], type_num, show_mode, wpn_rank, bool:block)
 		cData[23]=0;
 
 	formatex(sql_query, 511, "SELECT pid FROM `%s%s` WHERE type='%s' and pspeed=%d LIMIT 10", block ? "uq_block_tops" : "uq_jumps", get_pcvar_num(sv_airaccelerate) == 100 ? "_100aa" : "", type, weapon_maxspeed(wpn_rank));
-	SQL_ThreadQuery(DB_TUPLE1,"QueryHandle_type_place", sql_query, cData, 24);
+	SQL_ThreadQuery(DB_TUPLE,"QueryHandle_type_place", sql_query, cData, 24);
 }
 
 public QueryHandle_type_place(iFailState, Handle:hQuery, szError[], iErrnum, cData[], iSize, Float:fQueueTime)
@@ -160,7 +141,7 @@ public QueryHandle_type_place(iFailState, Handle:hQuery, szError[], iErrnum, cDa
 	show_hudmessage(id, "Loading %s %s for Weapon with maxspeed: %d - 0%%", cData, block ? "Block Top" : "Top", pspeed);
 	
 	formatex(sql_query, 511, "SELECT * FROM %s%s WHERE type='%s' and pspeed=%d ORDER BY %sdistance DESC LIMIT 10", block ? "uq_block_tops" : "uq_jumps", get_pcvar_num(sv_airaccelerate) == 100 ? "_100aa" : "", cData,pspeed, block ? "block DESC," : "", NSHOW);
-	SQL_ThreadQuery(DB_TUPLE1,"QueryHandle_LoadTops", sql_query, bData, 25);
+	SQL_ThreadQuery(DB_TUPLE,"QueryHandle_LoadTops", sql_query, bData, 25);
 	
 	return PLUGIN_CONTINUE;
 }
@@ -450,7 +431,7 @@ public pid_in_name(mode,max_place,num,id,type[],pspeed,type_num,pid, distance, m
 	}
 	
 	formatex(sql_query, 511, "SELECT name FROM uq_players WHERE id=%d",pid);
-	SQL_ThreadQuery(DB_TUPLE1,"QueryHandle_pidName", sql_query, cData, 45);
+	SQL_ThreadQuery(DB_TUPLE,"QueryHandle_pidName", sql_query, cData, 45);
 	
 }
 public QueryHandle_pidName(iFailState, Handle:hQuery, szError[], iErrnum, cData[], iSize, Float:fQueueTime)
@@ -557,7 +538,7 @@ public pid_in_name_block(mode,max_place,num,id,type[],pspeed,type_num,pid, dista
 	}
 	
 	formatex(sql_query, 511, "SELECT name FROM uq_players WHERE id=%d",pid);
-	SQL_ThreadQuery(DB_TUPLE1,"QueryHandle_pidName_block", sql_query, cData, 45);
+	SQL_ThreadQuery(DB_TUPLE,"QueryHandle_pidName_block", sql_query, cData, 45);
 	
 }
 public QueryHandle_pidName_block(iFailState, Handle:hQuery, szError[], iErrnum, cData[], iSize, Float:fQueueTime)
@@ -777,56 +758,6 @@ public tmp_show_tops_weapon(id,type[],type_num,wpn_rank)
 	show_motd(id, buffer, strin);
 }
 
-public weapon_maxspeed(rank)
-{
-	new maxspeed;
-
-	if(rank == 0)
-		maxspeed = 250;
-	if(rank == 1)
-		maxspeed = 210;
-	if(rank == 2)
-		maxspeed = 220;
-	if(rank == 3)
-		maxspeed = 221;
-	if(rank == 4)
-		maxspeed = 230;
-	if(rank == 5)
-		maxspeed = 235;
-	if(rank == 6)
-		maxspeed = 240;
-	if(rank == 7)
-		maxspeed = 245;
-	
-	return maxspeed;
-}
-public weapon_rank(maxspeed)
-{
-	new rank;
-	switch(maxspeed)
-	{	
-		case 0:
-			rank = -1;
-		case 210:
-			rank = 1;
-		case 220:
-			rank = 2;
-		case 221:
-			rank = 3;
-		case 230:
-			rank = 4;
-		case 235:
-			rank = 5;
-		case 240:
-			rank = 6;
-		case 245:
-			rank = 7;
-		case 250:
-			rank = 0;
-	}
-	return rank;
-}
-
 public Float:find_min_jumpoff(Float:TmpArray[NTOP+1])
 {
 	new num_min;
@@ -843,8 +774,8 @@ public Float:find_min_jumpoff(Float:TmpArray[NTOP+1])
 
 public plugin_end() 
 { 
-	if(DB_TUPLE1)
-		SQL_FreeHandle(DB_TUPLE1);
-	if(SqlConnection1)
-		SQL_FreeHandle(SqlConnection1);
+	if(DB_TUPLE)
+		SQL_FreeHandle(DB_TUPLE);
+	if(SqlConnection)
+		SQL_FreeHandle(SqlConnection);
 }

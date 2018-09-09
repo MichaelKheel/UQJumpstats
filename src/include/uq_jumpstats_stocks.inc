@@ -1,14 +1,77 @@
-new const KZ_DIR[] = "uq_jumpstats";
-new bool:g_userConnected[33],bool:g_alive[33];
+#pragma tabsize 0
 
-bool:valid_id(id)
+new bool:g_userConnected[33],bool:g_alive[33];
+new Handle:DB_TUPLE;
+new Handle:SqlConnection;
+new g_error[512];
+
+public stats_sql()
 {
-	if(id>0 && id<33)
-	{
-		return true;
+	new kz_uq_host[64];
+	new kz_uq_user[64];
+	new kz_uq_pass[64];
+	new kz_uq_db[64];
+
+	new cvarfiles[256];
+	kz_get_configsfile(cvarfiles, charsmax(cvarfiles));
+
+	if (file_exists(cvarfiles)) 
+    {
+        new FileOpen = fopen(cvarfiles, "rt");
+        new Text[256], szArg1[64], szArg2[64];
+
+        while(!feof(FileOpen)) 
+        {
+            fgets(FileOpen, Text, sizeof(Text) - 1);
+            strtok(Text, szArg1, charsmax(szArg1), szArg2, charsmax(szArg2), '=');
+			replace_all(szArg2, charsmax(szArg2), "[","");
+			replace_all(szArg2, charsmax(szArg2), "]","");
+			trim(szArg1);
+			trim(szArg2);
+            if(equali(szArg1, "kz_uq_host")) kz_uq_host = szArg2;
+			if(equali(szArg1, "kz_uq_user")) kz_uq_user = szArg2;
+			if(equali(szArg1, "kz_uq_pass")) kz_uq_pass = szArg2;
+			if(equali(szArg1, "kz_uq_db")) {kz_uq_db = szArg2;break;}
+        }
+        fclose(FileOpen)
 	}
 	
-	return false;
+	DB_TUPLE = SQL_MakeDbTuple(kz_uq_host, kz_uq_user, kz_uq_pass, kz_uq_db);
+	
+	new error;
+	SqlConnection = SQL_Connect(DB_TUPLE,error,g_error,511);
+	
+	if(!SqlConnection) 
+	{
+		server_print("uq_jumpstats: Could not connect to SQL database; Error #%d: %s", error, g_error);
+		log_amx("uq_jumpstats: Could not connect to SQL database; Error #%d: %s", error, g_error);
+		return pause("a");
+	}
+	
+	new CreateInto[1001];
+	
+	formatex(CreateInto, 1000, "CREATE TABLE IF NOT EXISTS uq_players (id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,name VARCHAR(64) NOT NULL,ip VARCHAR(39) NOT NULL,authid VARCHAR(35) NOT NULL, lastseen INT(10) NOT NULL,INDEX(name,authid))");
+	SQL_ThreadQuery(DB_TUPLE,"QueryHandle", CreateInto);
+	
+	formatex(CreateInto, 1000, "CREATE TABLE IF NOT EXISTS uq_jumps (pid INT(11) NOT NULL,type VARCHAR(32) NOT NULL,distance INT(10) NOT NULL,maxspeed INT(10) NOT NULL,prestrafe INT(10) NOT NULL,strafes INT(2) NOT NULL,sync INT(3) NOT NULL,ddbh INT(3) NOT NULL DEFAULT '0',pspeed INT(3) NOT NULL,wpn VARCHAR(32) NOT NULL,INDEX(pid,type,distance,maxspeed,prestrafe,strafes,sync,ddbh,pspeed,wpn))");
+	SQL_ThreadQuery(DB_TUPLE,"QueryHandle", CreateInto);
+	
+	formatex(CreateInto, 1000, "CREATE TABLE IF NOT EXISTS uq_block_tops (pid INT(11) NOT NULL,type VARCHAR(32) NOT NULL,distance INT(10) NOT NULL,jumpoff INT(10) NOT NULL,block VARCHAR(5) NOT NULL,pspeed INT(3) NOT NULL,wpn VARCHAR(32) NOT NULL,INDEX(pid,type,distance,jumpoff,pspeed,wpn))");
+	SQL_ThreadQuery(DB_TUPLE,"QueryHandle", CreateInto);
+		
+	return PLUGIN_CONTINUE;
+}
+
+public QueryHandle(iFailState, Handle:hQuery, szError[], iErrnum, cData[], iSize, Float:fQueueTime)
+{
+	if( iFailState != TQUERY_SUCCESS )
+	{
+		log_amx("uq_jumpstats: SQL Error #%d - %s", iErrnum, szError);
+		client_print(0,print_chat, "SQL error. Data has not been not saved.");
+	}
+	
+	SQL_FreeHandle(hQuery);
+	return PLUGIN_CONTINUE;
 }
 
 stock is_user_spectating_player(spectator, player)
@@ -96,23 +159,6 @@ stock Float:UpBhop_calc(Float:height)
 	}
 
 	return 0.0;
-}
-
-bool:is_user_ducking( id ) {
-	if( !valid_id( id )  )
-		return false;
-	
-	new Float:abs_min[3], Float:abs_max[3];
-	
-	pev( id, pev_absmin, abs_min );
-	pev( id, pev_absmax, abs_max );
-	
-	abs_min[2] += 64.0;
-	
-	if( abs_min[2] < abs_max[2] )
-		return false;
-	
-	return true;
 }
 
 ///exolents fail///
@@ -252,40 +298,11 @@ stock Float:LandingCalculate(id,Float:landing_orig[3], Float:jumpoff_origin[3])
 	}
 	return 0.0;
 }
-bool:check_for_bug_distance(Float:check_distance,type,mSpeed)
-{
-	new minys=floatround((250.0-mSpeed)*0.73,floatround_floor);
-	if(type==1 && check_distance>(260-minys))
-	{
-		return true;
-	}
-	else if(type==2 && check_distance>(277-minys))
-	{
-		return true;
-	}
-	else if(type==3 && check_distance>(253-minys))
-	{
-		return true;
-	}
-	else if(type==4 && check_distance>200)
-	{
-		return true;
-	}
-	else if(type==5 && check_distance>225-minys)
-	{
-		return true;
-	}
-	else if(type==6 && check_distance>180-minys)
-	{
-		return true;
-	}
-	
-	return false;
-}
-stock kz_get_configsdir(name[], len)
+
+stock kz_get_configsfile(name[], len)
 {
 	new lalin[64];
 	get_localinfo("amxx_configsdir", lalin,63);
 	
-	return formatex(name, len, "%s/%s", lalin, KZ_DIR);
+	return formatex(name, len, "%s/uqjumpstats.cfg", lalin);
 }

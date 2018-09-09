@@ -1,51 +1,5 @@
-#include <sqlx>
-
 #define TASK_CHECK_SQL_PLAYER 13378
 ///////////////////////////////////////sql code///////////////////
-public stats_sql()
-{	
-	new kz_uq_host [] = "";
-	new kz_uq_user [] = "";
-	new kz_uq_pass [] = "";
-	new kz_uq_db [] = "";
-	
-	DB_TUPLE = SQL_MakeDbTuple(kz_uq_host, kz_uq_user, kz_uq_pass, kz_uq_db);
-	
-	new error;
-	SqlConnection = SQL_Connect(DB_TUPLE,error,g_error,511);
-	
-	if(!SqlConnection) 
-	{
-		server_print("uq_jumpstats: Could not connect to SQL database; Error #%d: %s", error, g_error);
-		log_amx("uq_jumpstats: Could not connect to SQL database; Error #%d: %s", error, g_error);
-		return pause("a");
-	}
-	
-	new CreateInto[1001];
-	
-	formatex(CreateInto, 1000, "CREATE TABLE IF NOT EXISTS uq_players (id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,name VARCHAR(64) NOT NULL,ip VARCHAR(39) NOT NULL,authid VARCHAR(35) NOT NULL, lastseen INT(10) NOT NULL,INDEX(name,authid))");
-	SQL_ThreadQuery(DB_TUPLE,"QueryHandle", CreateInto);
-	
-	formatex(CreateInto, 1000, "CREATE TABLE IF NOT EXISTS uq_jumps (pid INT(11) NOT NULL,type VARCHAR(32) NOT NULL,distance INT(10) NOT NULL,maxspeed INT(10) NOT NULL,prestrafe INT(10) NOT NULL,strafes INT(2) NOT NULL,sync INT(3) NOT NULL,ddbh INT(3) NOT NULL DEFAULT '0',pspeed INT(3) NOT NULL,wpn VARCHAR(32) NOT NULL,INDEX(pid,type,distance,maxspeed,prestrafe,strafes,sync,ddbh,pspeed,wpn))");
-	SQL_ThreadQuery(DB_TUPLE,"QueryHandle", CreateInto);
-	
-	formatex(CreateInto, 1000, "CREATE TABLE IF NOT EXISTS uq_block_tops (pid INT(11) NOT NULL,type VARCHAR(32) NOT NULL,distance INT(10) NOT NULL,jumpoff INT(10) NOT NULL,block VARCHAR(5) NOT NULL,pspeed INT(3) NOT NULL,wpn VARCHAR(32) NOT NULL,INDEX(pid,type,distance,jumpoff,pspeed,wpn))");
-	SQL_ThreadQuery(DB_TUPLE,"QueryHandle", CreateInto);
-		
-	return PLUGIN_CONTINUE;
-}
-
-public QueryHandle(iFailState, Handle:hQuery, szError[], iErrnum, cData[], iSize, Float:fQueueTime)
-{
-	if( iFailState != TQUERY_SUCCESS )
-	{
-		log_amx("uq_jumpstats: SQL Error #%d - %s", iErrnum, szError);
-		client_print(0,print_chat, "SQL error. Data has not been not saved.");
-	}
-	
-	SQL_FreeHandle(hQuery);
-	return PLUGIN_CONTINUE;
-}
 public retrying_getinfo(id)
 {
 	id=id-213134;

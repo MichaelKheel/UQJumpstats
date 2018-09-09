@@ -5,15 +5,13 @@
 #include <engine>
 #include <cstrike>
 #include <hamsandwich>
-#include <uq_jumpstats_stocks.inc>
 #include <celltrie>
+#include <sqlx>
+#include <uq_jumpstats_stocks.inc>
 
 #define PLUGIN "UQJS"
-#define VERSION "1.08"
+#define VERSION "1.09"
 #define AUTHOR "MichaelKheel"
-
-#pragma semicolon 1
-#pragma tabsize 0
 
 new g_ClFilterStuffCmd[33];
 #define prefix "[CC]"
@@ -89,8 +87,6 @@ new showtime_st_stats[33];
 new Float:jof[33],Float:speedshowing[33];
 
 new g_playername[33][64], g_playersteam[33][35], g_playerip[33][16];
-
-new Handle:DB_TUPLE,Handle:SqlConnection,g_error[512];
 new sql_JumpType[33];
 new Float:oldjump_height[33],Float:jheight[33],bool:jheight_show[33];
 
@@ -164,8 +160,6 @@ new Type_List[NTECHNUM][] = { 		//For Top_
 	"multibhop",		//24
 	"dropmcj"		//25
 };
-
-new const KZ_CVARSDIR[] = "config.cfg";
 
 public plugin_init()
 {
@@ -357,9 +351,8 @@ public plugin_init()
 
 public plugin_cfg()
 {
-	new cvarfiles[100], uqpath[64];
-	kz_get_configsdir(uqpath, 63);
-	formatex(cvarfiles, 99, "%s/%s", uqpath, KZ_CVARSDIR);
+	new cvarfiles[256];
+	kz_get_configsfile(cvarfiles, charsmax(cvarfiles));
 	
 	if( file_exists(cvarfiles) )
 	{
@@ -479,6 +472,64 @@ public plugin_precache()
 	heystats = precache_model( "sprites/uq_jumpstats.spr" );
 }
 
+bool:valid_id(id)
+{
+	if(id>0 && id<33)
+	{
+		return true;
+	}
+	
+	return false;
+}
+
+bool:check_for_bug_distance(Float:check_distance,type,mSpeed)
+{
+	new minys=floatround((250.0-mSpeed)*0.73,floatround_floor);
+	if(type==1 && check_distance>(260-minys))
+	{
+		return true;
+	}
+	else if(type==2 && check_distance>(277-minys))
+	{
+		return true;
+	}
+	else if(type==3 && check_distance>(253-minys))
+	{
+		return true;
+	}
+	else if(type==4 && check_distance>200)
+	{
+		return true;
+	}
+	else if(type==5 && check_distance>225-minys)
+	{
+		return true;
+	}
+	else if(type==6 && check_distance>180-minys)
+	{
+		return true;
+	}
+	
+	return false;
+}
+
+bool:is_user_ducking( id ) {
+	if( !valid_id( id )  )
+		return false;
+	
+	new Float:abs_min[3], Float:abs_max[3];
+	
+	pev( id, pev_absmin, abs_min );
+	pev( id, pev_absmax, abs_max );
+	
+	abs_min[2] += 64.0;
+	
+	if( abs_min[2] < abs_max[2] )
+		return false;
+	
+	return true;
+}
+
 stock IsOnGround(id) 
 {    
 	new flags = pev(id, pev_flags);
@@ -487,18 +538,6 @@ stock IsOnGround(id)
 		return true;
 	}
 	return false;
-}
-
-stock is_user_localhost(id) 
-{
-	new sAddress[16];
-	get_user_ip(id, sAddress, 15, 1);
-	
-	if(equal(sAddress, "loopback") || equal(sAddress, "127.0.0.1")) {
-		return PLUGIN_HANDLED;
-	}
-	
-	return PLUGIN_CONTINUE;
 }
 
 public Log_script(f_frames,cheated_frames,id,Float:log_dist,Float:log_max,Float:log_pre,log_str,log_sync,jump_type_str[],wpn_str[],punishments[],t_str[40*NSTRAFES])
