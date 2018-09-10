@@ -1,4 +1,4 @@
-# Unique Jumpstats plugin
+# Unique Jumpstats plugin  ![GitHub build](https://img.shields.io/badge/build-compiled-brightgreen.svg) [![GitHub release](https://img.shields.io/github/release/michaelkheel/UQJumpstats.svg)](https://github.com/MichaelKheel/UQJumpstats/releases)
 Initial version of the file **2.39**
 
 Jumping statistics plugin for Goldsrc Engine (Counter-Strike 1.6) originally developed by Borjomi, but heavily modified by me.
